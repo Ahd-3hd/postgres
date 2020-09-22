@@ -102,7 +102,7 @@ app.post("/getToken", (req, res) => {
         .then((user) => {
           const payload = { id: user.id };
           const token = jwt.sign(payload, process.env.SECRET_OR_KEY);
-          res.send(token);
+          res.json(token);
         })
         .catch((err) => res.status(401).send({ err: err }));
     });
