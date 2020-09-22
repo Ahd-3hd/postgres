@@ -20,7 +20,7 @@ const knexDb = knex({
 });
 const bookshelf = require("bookshelf");
 const securePassword = require("bookshelf-secure-password");
-
+const jwt = require("jsonwebtoken");
 const db = bookshelf(knexDb);
 db.plugin(securePassword);
 const opts = {
@@ -85,15 +85,42 @@ app.post("/todos", async (req, res) => {
   }
 });
 
-//get all todos
-app.get("/todos", async (req, res) => {
-  try {
-    const allTodos = await pool.query("SELECT * FROM todo");
-    res.json(allTodos.rows);
-  } catch (error) {
-    console.error(error.message);
+//get the token yo
+app.post("/getToken", (req, res) => {
+  if (!req.body.email || !req.body.password) {
+    return res.status(400).send("Bad Credentials");
   }
+
+  User.forge({ email: req.body.email })
+    .fetch()
+    .then((result) => {
+      if (!result) {
+        return res.status(400).send("user not found bro");
+      }
+      result
+        .authenticate(req.body.password)
+        .then((user) => {
+          const payload = { id: user.id };
+          const token = jwt.sign(payload, process.env.SECRET_OR_KEY);
+          res.send(token);
+        })
+        .catch((err) => res.status(401).send({ err: err }));
+    });
 });
+
+//get all todos
+app.get(
+  "/todos",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    try {
+      const allTodos = await pool.query("SELECT * FROM todo");
+      res.json(allTodos.rows);
+    } catch (error) {
+      console.error(error.message);
+    }
+  }
+);
 // get a todo
 
 app.get("/todos/:id", async (req, res) => {
