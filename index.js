@@ -1,8 +1,25 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const cors = require("cors");
 const pool = require("./db");
+const passport = require("passport");
+const passportJWT = require("passport-jwt");
+const JwtStrategy = passportJWT.Strategy;
+const ExtractJWT = passportJWT.ExtractJwt;
 
+const opts = {
+  jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
+  secretOrKey: process.env.SECRET_OR_KEY,
+};
+const strategy = new JwtStrategy(opts, (payload, next) => {
+  //get user from db
+  const user = null;
+  next(null, user);
+});
+
+passport.use(strategy);
+app.use(passport.initialize());
 // middleware
 
 app.use(cors());
