@@ -7,23 +7,67 @@ const passport = require("passport");
 const passportJWT = require("passport-jwt");
 const JwtStrategy = passportJWT.Strategy;
 const ExtractJWT = passportJWT.ExtractJwt;
+const parser = require("body-parser");
+const knex = require("knex");
+const knexDb = knex({
+  client: "pg",
+  connection: {
+    host: "127.0.0.1",
+    user: process.env.USER,
+    password: process.env.PASSWORD,
+    database: "jwt_test",
+  },
+});
+const bookshelf = require("bookshelf");
+const securePassword = require("bookshelf-secure-password");
 
+const db = bookshelf(knexDb);
+db.plugin(securePassword);
 const opts = {
   jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
   secretOrKey: process.env.SECRET_OR_KEY,
 };
+
+const User = db.Model.extend({
+  tableName: "login_user",
+  hasSecurePassword: true,
+});
 const strategy = new JwtStrategy(opts, (payload, next) => {
   //get user from db
-  const user = null;
-  next(null, user);
+  User.forge({ id: payload.id })
+    .fetch()
+    .then((res) => {
+      next(null, res);
+    });
 });
 
 passport.use(strategy);
 app.use(passport.initialize());
+app.use(
+  parser.urlencoded({
+    extended: false,
+  })
+);
+app.use(parser.json());
 // middleware
 
 app.use(cors());
 app.use(express.json());
+
+//user shit
+
+app.post("/seedUser", (req, res) => {
+  if (!req.body.email || !req.body.password) {
+    return res.status(401).send("no fields");
+  }
+  const user = new User({
+    email: req.body.email,
+    password: req.body.password,
+  });
+  user.save().then(() => {
+    res.send("ok");
+  });
+});
 
 // create a todo
 
